@@ -23,6 +23,8 @@ import (
 	"isac-cran-system/internal/router"
 	"isac-cran-system/internal/service"
 	"isac-cran-system/pkg/logger"
+	"isac-cran-system/pkg/pool"
+	"isac-cran-system/pkg/queue"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -175,6 +177,18 @@ func main() {
 	engine := router.Setup(irsHandler, channelHandler, algorithmHandler, sensorHandler, systemHandler)
 
 	engine.Use(middleware.RateLimit(100, time.Minute))
+
+	middleware.RegisterMetrics(engine)
+
+	workerPool := pool.NewWorkerPool(10, 100)
+	workerPool.Start()
+	defer workerPool.Stop()
+
+	taskQueue := queue.NewTaskQueue(5, 100)
+	taskQueue.Start()
+	defer taskQueue.Stop()
+
+	logger.Info("Worker pool and task queue started")
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),

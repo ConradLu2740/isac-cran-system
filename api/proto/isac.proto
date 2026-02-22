@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package isac;
+
+option go_package = "isac-cran-system/api/proto;proto";
+
+service AlgorithmService {
+    rpc RunBeamforming(BeamformingRequest) returns (BeamformingResponse);
+    rpc RunDOA(DOARequest) returns (DOAResponse);
+    rpc StreamBeamforming(stream BeamformingRequest) returns (stream BeamformingResponse);
+}
+
+service IRSService {
+    rpc GetStatus(Empty) returns (IRSStatus);
+    rpc Configure(IRSConfigRequest) returns (IRSConfigResponse);
+}
+
+service SensorService {
+    rpc ListSensors(Empty) returns (SensorList);
+    rpc StreamSensorData(Empty) returns (stream SensorData);
+}
+
+message Empty {}
+
+message BeamformingRequest {
+    string experiment_id = 1;
+    int32 element_count = 2;
+    double target_direction = 3;
+    repeated double interference_angles = 4;
+    double snr_threshold = 5;
+    int32 max_iterations = 6;
+}
+
+message BeamformingResponse {
+    string experiment_id = 1;
+    repeated double beam_pattern = 2;
+    double main_lobe_direction = 3;
+    double main_lobe_width = 4;
+    double side_lobe_level = 5;
+    int32 iterations = 6;
+    bool converged = 7;
+}
+
+message DOARequest {
+    string experiment_id = 1;
+    int32 element_count = 2;
+    int32 num_sources = 3;
+    int32 snapshot_length = 4;
+    string method = 5;
+}
+
+message DOAResponse {
+    string experiment_id = 1;
+    repeated double estimated_angles = 2;
+    repeated double spectrum = 3;
+    double rmse = 4;
+}
+
+message IRSStatus {
+    int32 element_count = 1;
+    string frequency_band = 2;
+    double temperature = 3;
+    bool power_status = 4;
+    repeated double phase_shifts = 5;
+}
+
+message IRSConfigRequest {
+    repeated double phase_shifts = 1;
+}
+
+message IRSConfigResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message SensorInfo {
+    string sensor_id = 1;
+    string sensor_type = 2;
+    string location = 3;
+    string unit = 4;
+    double min_value = 5;
+    double max_value = 6;
+    int32 status = 7;
+}
+
+message SensorList {
+    repeated SensorInfo sensors = 1;
+}
+
+message SensorData {
+    string sensor_id = 1;
+    double value = 2;
+    int64 timestamp = 3;
+}
