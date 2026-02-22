@@ -1,0 +1,74 @@
+server:
+  port: 8080
+  mode: debug
+
+mysql:
+  host: localhost
+  port: 3307
+  database: isac_cran
+  username: root
+  password: root123
+  charset: utf8mb4
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: 3600
+
+influxdb:
+  url: http://localhost:8086
+  token: Z5Jh5WtpTOxB-ipGwrMYHjMnMCSh3MX5Ca5MYPm9tc8KbO3453clH1ICKgi4r4vOubs8vm4NP9r18__oGHjdYQ==
+  org: isac-lab
+  bucket: channel-data
+
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+  pool_size: 10
+
+mqtt:
+  broker: tcp://localhost:1883
+  client_id: isac-cran-server
+  username: ""
+  password: ""
+  qos: 1
+
+log:
+  level: debug
+  format: console
+  output: stdout
+  filename: logs/isac-cran.log
+  max_size: 100
+  max_backups: 5
+  max_age: 30
+  compress: true
+
+device:
+  irs:
+    enabled: true
+    simulator: true
+    element_count: 64
+    frequency_band: 2.4GHz
+  usrp:
+    enabled: true
+    simulator: true
+    sample_rate: 10000000
+    center_freq: 2400000000
+  sensor:
+    enabled: true
+    simulator: true
+    collection_interval: 5s
+
+algorithm:
+  beamforming:
+    max_iterations: 100
+    convergence_threshold: 0.001
+  doa:
+    method: MUSIC
+    num_sources: 3
+    snapshot_length: 1024
+
+matlab:
+  enabled: true
+  data_dir: ./data/matlab
+  export_format: json

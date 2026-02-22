@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISAC-CRAN 实验原型系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; }
+        .layout { display: flex; min-height: 100vh; }
+        .sider { width: 200px; background: #001529; color: #fff; }
+        .sider-header { height: 64px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .menu { list-style: none; padding: 16px 0; }
+        .menu-item { padding: 12px 24px; cursor: pointer; transition: all 0.3s; }
+        .menu-item:hover { background: rgba(255,255,255,0.1); }
+        .menu-item.active { background: #1890ff; }
+        .main { flex: 1; }
+        .header { height: 64px; background: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+        .content { padding: 24px; }
+        .card { background: #fff; border-radius: 8px; padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+        .card-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #f0f0f0; }
+        .row { display: flex; gap: 16px; margin-bottom: 16px; }
+        .col { flex: 1; }
+        .stat { text-align: center; padding: 16px; }
+        .stat-title { font-size: 14px; color: #666; margin-bottom: 8px; }
+        .stat-value { font-size: 28px; font-weight: 600; color: #333; }
+        .stat-suffix { font-size: 14px; color: #666; margin-left: 4px; }
+        .btn { padding: 8px 16px; background: #1890ff; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .btn:hover { background: #40a9ff; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-success { background: #52c41a; }
+        .table { width: 100%; border-collapse: collapse; }
+        .table th, .table td { padding: 12px; text-align: left; border-bottom: 1px solid #f0f0f0; }
+        .table th { background: #fafafa; font-weight: 600; }
+        .result-box { background: #f6f8fa; padding: 16px; border-radius: 4px; margin-top: 16px; }
+        .result-item { display: flex; margin-bottom: 8px; }
+        .result-label { width: 120px; color: #666; }
+        .result-value { flex: 1; font-weight: 500; }
+        .chart-container { height: 300px; }
+        .hidden { display: none; }
+        .status-online { color: #52c41a; }
+        .status-offline { color: #ff4d4f; }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <div class="sider">
+            <div class="sider-header">ISAC-CRAN</div>
+            <ul class="menu">
+                <li class="menu-item active" onclick="showPage('dashboard')">📊 系统概览</li>
+                <li class="menu-item" onclick="showPage('irs')">📡 IRS控制</li>
+                <li class="menu-item" onclick="showPage('algorithm')">🔬 算法引擎</li>
+                <li class="menu-item" onclick="showPage('sensor')">🌡️ 传感器</li>
+                <li class="menu-item" onclick="showPage('settings')">⚙️ 系统设置</li>
+            </ul>
+        </div>
+        <div class="main">
+            <div class="header">
+                <h2>ISAC-CRAN 实验原型系统</h2>
+                <span id="currentTime"></span>
+            </div>
+            <div class="content">
+                <!-- Dashboard Page -->
+                <div id="page-dashboard">
+                    <div class="row">
+                        <div class="col"><div class="card"><div class="stat"><div class="stat-title">IRS阵元数量</div><div class="stat-value"><span id="stat-elements">64</span><span class="stat-suffix">个</span></div></div></div></div>
+                        <div class="col"><div class="card"><div class="stat"><div class="stat-title">工作频率</div><div class="stat-value">2.4<span class="stat-suffix">GHz</span></div></div></div></div>
+                        <div class="col"><div class="card"><div class="stat"><div class="stat-title">传感器数量</div><div class="stat-value"><span id="stat-sensors">8</span><span class="stat-suffix">个</span></div></div></div></div>
+                        <div class="col"><div class="card"><div class="stat"><div class="stat-title">系统状态</div><div class="stat-value" style="color: #52c41a;">正常运行</div></div></div></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><div class="card"><div class="card-title">波束方向图</div><div id="chart-beam" class="chart-container"></div></div></div>
+                        <div class="col"><div class="card"><div class="card-title">传感器数据趋势</div><div id="chart-sensor" class="chart-container"></div></div></div>
+                    </div>
+                </div>
+
+                <!-- IRS Page -->
+                <div id="page-irs" class="hidden">
+                    <div class="card">
+                        <div class="card-title">IRS控制面板 <button class="btn" onclick="fetchIRSStatus()" style="float: right;">刷新状态</button></div>
+                        <div class="row">
+                            <div class="col"><div class="stat"><div class="stat-title">阵元数量</div><div class="stat-value" id="irs-elements">64</div></div></div>
+                            <div class="col"><div class="stat"><div class="stat-title">频段</div><div class="stat-value" id="irs-freq">2.4GHz</div></div></div>
+                            <div class="col"><div class="stat"><div class="stat-title">温度</div><div class="stat-value"><span id="irs-temp">29.4</span><span class="stat-suffix">°C</span></div></div></div>
+                            <div class="col"><div class="stat"><div class="stat-title">电源状态</div><div class="stat-value" id="irs-power" style="color: #52c41a;">正常</div></div></div>
+                        </div>
+                        <div class="result-box">
+                            <div class="result-item"><div class="result-label">相移配置 (前16个):</div><div class="result-value" id="irs-phases">0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00</div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Algorithm Page -->
+                <div id="page-algorithm" class="hidden">
+                    <div class="card">
+                        <div class="card-title">算法引擎</div>
+                        <div style="margin-bottom: 24px;">
+                            <h4 style="margin-bottom: 12px;">波束成形算法</h4>
+                            <p style="color: #666; margin-bottom: 12px;">通过调整IRS阵元的相移，实现信号在目标方向的增益最大化。</p>
+                            <button class="btn" id="btn-beamforming" onclick="runBeamforming()">运行波束成形算法</button>
+                            <div id="beamforming-result" class="result-box hidden">
+                                <div class="row">
+                                    <div class="col"><div id="chart-beam-result" class="chart-container"></div></div>
+                                    <div class="col">
+                                        <div class="result-item"><div class="result-label">迭代次数:</div><div class="result-value" id="bf-iterations">-</div></div>
+                                        <div class="result-item"><div class="result-label">是否收敛:</div><div class="result-value" id="bf-converged">-</div></div>
+                                        <div class="result-item"><div class="result-label">主瓣方向:</div><div class="result-value" id="bf-mainlobe">-</div></div>
+                                        <div class="result-item"><div class="result-label">副瓣电平:</div><div class="result-value" id="bf-sll">-</div></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <hr style="border: none; border-top: 1px solid #f0f0f0; margin: 24px 0;">
+                        <div>
+                            <h4 style="margin-bottom: 12px;">DOA估计算法</h4>
+                            <p style="color: #666; margin-bottom: 12px;">使用MUSIC算法估计信号源的到达方向。</p>
+                            <button class="btn" id="btn-doa" onclick="runDOA()">运行DOA估计算法</button>
+                            <div id="doa-result" class="result-box hidden">
+                                <div class="row">
+                                    <div class="col"><div id="chart-doa-result" class="chart-container"></div></div>
+                                    <div class="col">
+                                        <div class="result-item"><div class="result-label">估计角度:</div><div class="result-value" id="doa-angles">-</div></div>
+                                        <div class="result-item"><div class="result-label">谱点数量:</div><div class="result-value" id="doa-spectrum">-</div></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sensor Page -->
+                <div id="page-sensor" class="hidden">
+                    <div class="card">
+                        <div class="card-title">传感器列表</div>
+                        <table class="table">
+                            <thead><tr><th>传感器ID</th><th>类型</th><th>位置</th><th>单位</th><th>状态</th></tr></thead>
+                            <tbody id="sensor-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Settings Page -->
+                <div id="page-settings" class="hidden">
+                    <div class="card">
+                        <div class="card-title">系统设置</div>
+                        <div class="result-item"><div class="result-label">系统版本:</div><div class="result-value">1.0.0</div></div>
+                        <div class="result-item"><div class="result-label">系统名称:</div><div class="result-value">ISAC-CRAN System</div></div>
+                        <div class="result-item"><div class="result-label">描述:</div><div class="result-value">智能反射面辅助C-RAN通信感知一体化实验原型系统</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api/v1';
+        let beamChart, sensorChart, beamResultChart, doaResultChart;
+
+        function updateTime() {
+            document.getElementById('currentTime').textContent = new Date().toLocaleString('zh-CN');
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        function showPage(page) {
+            document.querySelectorAll('[id^="page-"]').forEach(el => el.classList.add('hidden'));
+            document.getElementById('page-' + page).classList.remove('hidden');
+            document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        async function fetchIRSStatus() {
+            try {
+                const res = await axios.get(`${API_BASE}/irs/status`);
+                const data = res.data.data;
+                document.getElementById('irs-elements').textContent = data.element_count || 64;
+                document.getElementById('irs-freq').textContent = data.frequency_band || '2.4GHz';
+                document.getElementById('irs-temp').textContent = (data.temperature || 29.4).toFixed(1);
+                document.getElementById('irs-power').textContent = data.power_status ? '正常' : '异常';
+                document.getElementById('irs-power').style.color = data.power_status ? '#52c41a' : '#ff4d4f';
+                if (data.phase_shifts && data.phase_shifts.length > 0) {
+                    document.getElementById('irs-phases').textContent = data.phase_shifts.slice(0, 16).map(p => p.toFixed(2)).join(', ');
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function fetchSensors() {
+            try {
+                const res = await axios.get(`${API_BASE}/sensor/list`);
+                const sensors = res.data.data || [];
+                document.getElementById('stat-sensors').textContent = sensors.length;
+                const tbody = document.getElementById('sensor-table');
+                tbody.innerHTML = sensors.map(s => `<tr>
+                    <td>${s.sensor_id}</td><td>${s.sensor_type}</td><td>${s.location}</td>
+                    <td>${s.unit}</td><td class="${s.status === 1 ? 'status-online' : 'status-offline'}">${s.status === 1 ? '在线' : '离线'}</td>
+                </tr>`).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        async function runBeamforming() {
+            const btn = document.getElementById('btn-beamforming');
+            btn.disabled = true; btn.textContent = '运行中...';
+            try {
+                const res = await axios.post(`${API_BASE}/algorithm/beamforming`, {
+                    experiment_id: `exp_${Date.now()}`,
+                    params: { element_count: 64, target_direction: 0.5, interference_angles: [0.2, 0.8], snr_threshold: 0.9, max_iterations: 100 }
+                });
+                const data = res.data.data;
+                document.getElementById('bf-iterations').textContent = data.iterations || '-';
+                document.getElementById('bf-converged').textContent = data.converged ? '是' : '否';
+                document.getElementById('bf-mainlobe').textContent = data.main_lobe_direction?.toFixed(4) || '-';
+                document.getElementById('bf-sll').textContent = (data.side_lobe_level?.toFixed(4) || '-') + ' dB';
+                document.getElementById('beamforming-result').classList.remove('hidden');
+                if (data.beam_pattern) {
+                    const angles = data.beam_pattern.map((_, i) => Math.floor(i * 360 / data.beam_pattern.length));
+                    beamResultChart.setOption({
+                        title: { text: '波束方向图', left: 'center' },
+                        tooltip: { trigger: 'axis' },
+                        xAxis: { type: 'category', data: angles, name: '角度 (°)' },
+                        yAxis: { type: 'value', name: '增益' },
+                        series: [{ type: 'line', data: data.beam_pattern, smooth: true, areaStyle: { opacity: 0.3 } }]
+                    });
+                }
+                alert('波束成形算法运行成功！');
+            } catch (e) { alert('算法运行失败: ' + e.message); }
+            btn.disabled = false; btn.textContent = '运行波束成形算法';
+        }
+
+        async function runDOA() {
+            const btn = document.getElementById('btn-doa');
+            btn.disabled = true; btn.textContent = '运行中...';
+            try {
+                const res = await axios.post(`${API_BASE}/algorithm/doa`, {
+                    experiment_id: `exp_${Date.now()}`,
+                    params: { element_count: 64, num_sources: 3, snapshot_length: 1024, method: 'MUSIC' }
+                });
+                const data = res.data.data;
+                document.getElementById('doa-angles').textContent = data.estimated_angles?.map(a => a.toFixed(2) + '°').join(', ') || '-';
+                document.getElementById('doa-spectrum').textContent = data.spectrum?.length || '-';
+                document.getElementById('doa-result').classList.remove('hidden');
+                if (data.spectrum) {
+                    const angles = data.spectrum.map((_, i) => (i * 180 / data.spectrum.length).toFixed(1));
+                    doaResultChart.setOption({
+                        title: { text: 'DOA空间谱', left: 'center' },
+                        tooltip: { trigger: 'axis' },
+                        xAxis: { type: 'category', data: angles, name: '角度 (°)' },
+                        yAxis: { type: 'value', name: '谱值' },
+                        series: [{ type: 'line', data: data.spectrum, smooth: true }]
+                    });
+                }
+                alert('DOA估计算法运行成功！');
+            } catch (e) { alert('算法运行失败: ' + e.message); }
+            btn.disabled = false; btn.textContent = '运行DOA估计算法';
+        }
+
+        function initCharts() {
+            beamChart = echarts.init(document.getElementById('chart-beam'));
+            sensorChart = echarts.init(document.getElementById('chart-sensor'));
+            
+            const pattern = [];
+            for (let i = 0; i < 360; i++) pattern.push(Math.sin(i * 0.1) * 0.5 + 0.5 + Math.random() * 0.1);
+            beamChart.setOption({
+                title: { text: '波束方向图', left: 'center' },
+                tooltip: { trigger: 'axis' },
+                xAxis: { type: 'category', data: Array.from({length: 360}, (_, i) => i), name: '角度 (°)' },
+                yAxis: { type: 'value', name: '增益' },
+                series: [{ type: 'line', data: pattern, smooth: true, areaStyle: { opacity: 0.3 } }]
+            });
+
+            sensorChart.setOption({
+                title: { text: '传感器数据趋势', left: 'center' },
+                tooltip: { trigger: 'axis' },
+                legend: { data: ['温度', '湿度', '电压'], top: 30 },
+                xAxis: { type: 'category', data: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'] },
+                yAxis: { type: 'value' },
+                series: [
+                    { name: '温度', type: 'line', data: [25, 26, 28, 30, 29, 27, 25] },
+                    { name: '湿度', type: 'line', data: [60, 58, 55, 50, 52, 56, 59] },
+                    { name: '电压', type: 'line', data: [220, 221, 219, 218, 220, 222, 221] }
+                ]
+            });
+
+            beamResultChart = echarts.init(document.getElementById('chart-beam-result'));
+            doaResultChart = echarts.init(document.getElementById('chart-doa-result'));
+        }
+
+        window.onload = function() {
+            initCharts();
+            fetchIRSStatus();
+            fetchSensors();
+        };
+    </script>
+</body>
+</html>
