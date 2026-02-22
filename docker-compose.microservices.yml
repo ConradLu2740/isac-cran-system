@@ -1,0 +1,148 @@
+version: '3.8'
+
+services:
+  consul:
+    image: consul:1.15
+    container_name: consul
+    ports:
+      - "8500:8500"
+      - "8600:8600/udp"
+    command: agent -server -ui -bootstrap-expect=1 -client=0.0.0.0
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=admin123
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+      - MYSQL_DATABASE=isac_cran
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=admin123456
+      - DOCKER_INFLUXDB_INIT_ORG=isac-lab
+      - DOCKER_INFLUXDB_INIT_BUCKET=channel-data
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-token
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    restart: unless-stopped
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVICE_NAME=api-gateway
+      - CONSUL_ADDR=consul:8500
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672/
+    depends_on:
+      - consul
+      - rabbitmq
+    restart: unless-stopped
+
+  irs-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: irs-service
+    ports:
+      - "8001:8001"
+    environment:
+      - SERVICE_NAME=irs-service
+      - SERVICE_PORT=8001
+      - CONSUL_ADDR=consul:8500
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=root123
+      - MYSQL_DATABASE=isac_cran
+    depends_on:
+      - consul
+      - mysql
+    restart: unless-stopped
+
+  algorithm-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: algorithm-service
+    ports:
+      - "8002:8002"
+    environment:
+      - SERVICE_NAME=algorithm-service
+      - SERVICE_PORT=8002
+      - CONSUL_ADDR=consul:8500
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672/
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_TOKEN=my-token
+      - INFLUXDB_ORG=isac-lab
+      - INFLUXDB_BUCKET=channel-data
+    depends_on:
+      - consul
+      - rabbitmq
+      - influxdb
+    restart: unless-stopped
+
+  sensor-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sensor-service
+    ports:
+      - "8003:8003"
+    environment:
+      - SERVICE_NAME=sensor-service
+      - SERVICE_PORT=8003
+      - CONSUL_ADDR=consul:8500
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672/
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_TOKEN=my-token
+      - INFLUXDB_ORG=isac-lab
+      - INFLUXDB_BUCKET=channel-data
+    depends_on:
+      - consul
+      - rabbitmq
+      - influxdb
+    restart: unless-stopped
+
+volumes:
+  rabbitmq_data:
+  redis_data:
+  mysql_data:
+  influxdb_data:
