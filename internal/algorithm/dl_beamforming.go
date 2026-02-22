@@ -78,10 +78,17 @@ func (l *ConvLayer) Backward(gradOutput *mat.Dense, learningRate float64) {
 	var weightUpdate mat.Dense
 	weightUpdate.Scale(learningRate, &gradWeights)
 	l.weights.Sub(l.weights, &weightUpdate)
-	var gradBiases mat.Dense
-	gradBiases.SumRows(gradOutput)
+	rows, cols := gradOutput.Dims()
+	gradBiases := mat.NewDense(1, cols, nil)
+	for j := 0; j < cols; j++ {
+		var sum float64
+		for i := 0; i < rows; i++ {
+			sum += gradOutput.At(i, j)
+		}
+		gradBiases.Set(0, j, sum)
+	}
 	var biasUpdate mat.Dense
-	biasUpdate.Scale(learningRate, &gradBiases)
+	biasUpdate.Scale(learningRate, gradBiases)
 	l.biases.Sub(l.biases, &biasUpdate)
 }
 
@@ -128,10 +135,17 @@ func (l *DenseLayer) Backward(gradOutput *mat.Dense, learningRate float64) {
 	var weightUpdate mat.Dense
 	weightUpdate.Scale(learningRate, &gradWeights)
 	l.weights.Sub(l.weights, &weightUpdate)
-	var gradBiases mat.Dense
-	gradBiases.SumRows(gradOutput)
+	rows, cols := gradOutput.Dims()
+	gradBiases := mat.NewDense(1, cols, nil)
+	for j := 0; j < cols; j++ {
+		var sum float64
+		for i := 0; i < rows; i++ {
+			sum += gradOutput.At(i, j)
+		}
+		gradBiases.Set(0, j, sum)
+	}
 	var biasUpdate mat.Dense
-	biasUpdate.Scale(learningRate, &gradBiases)
+	biasUpdate.Scale(learningRate, gradBiases)
 	l.biases.Sub(l.biases, &biasUpdate)
 }
 

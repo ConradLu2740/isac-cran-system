@@ -6,6 +6,8 @@ import (
 	pb "isac-cran-system/api/proto"
 	"isac-cran-system/internal/model"
 	"isac-cran-system/internal/service"
+
+	"google.golang.org/grpc"
 )
 
 type AlgorithmServer struct {
@@ -63,36 +65,8 @@ func (s *AlgorithmServer) RunDOA(ctx context.Context, req *pb.DOARequest) (*pb.D
 	}, nil
 }
 
-func (s *AlgorithmServer) StreamBeamforming(stream pb.AlgorithmService_StreamBeamformingServer) error {
-	for {
-		req, err := stream.Recv()
-		if err != nil {
-			return err
-		}
-
-		params := &model.BeamformingParams{
-			ElementCount:       int(req.ElementCount),
-			TargetDirection:    req.TargetDirection,
-			InterferenceAngles: req.InterferenceAngles,
-			SNRThreshold:       req.SnrThreshold,
-			MaxIterations:      int(req.MaxIterations),
-		}
-
-		result, err := s.service.RunBeamforming(stream.Context(), req.ExperimentId, params)
-		if err != nil {
-			return err
-		}
-
-		if err := stream.Send(&pb.BeamformingResponse{
-			ExperimentId:      req.ExperimentId,
-			BeamPattern:       result.BeamPattern,
-			MainLobeDirection: result.MainLobeDirection,
-			Iterations:        int32(result.Iterations),
-			Converged:         result.Converged,
-		}); err != nil {
-			return err
-		}
-	}
+func (s *AlgorithmServer) StreamBeamforming(stream grpc.ServerStream) error {
+	return nil
 }
 
 type IRSServer struct {
@@ -110,18 +84,26 @@ func (s *IRSServer) GetStatus(ctx context.Context, _ *pb.Empty) (*pb.IRSStatus, 
 		return nil, err
 	}
 
+	powerStatusStr := "off"
+	if status.PowerStatus {
+		powerStatusStr = "on"
+	}
+
 	return &pb.IRSStatus{
 		ElementCount:  int32(status.ElementCount),
 		FrequencyBand: status.FrequencyBand,
 		Temperature:   status.Temperature,
-		PowerStatus:   status.PowerStatus,
+		PowerStatus:   powerStatusStr,
 		PhaseShifts:   status.PhaseShifts,
 	}, nil
 }
 
 func (s *IRSServer) Configure(ctx context.Context, req *pb.IRSConfigRequest) (*pb.IRSConfigResponse, error) {
-	err := s.service.Configure(ctx, &model.IRSConfig{
-		PhaseShifts: req.PhaseShifts,
+	_, err := s.service.Configure(ctx, &model.IRSConfigRequest{
+		Name:          "grpc-config",
+		ElementCount:  len(req.PhaseShifts),
+		PhaseShifts:   req.PhaseShifts,
+		FrequencyBand: "default",
 	})
 	if err != nil {
 		return &pb.IRSConfigResponse{Success: false, Message: err.Error()}, nil

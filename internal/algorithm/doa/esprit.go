@@ -121,7 +121,7 @@ func (e *ESPRITEstimator) computeEigenvalues(covMatrix *mat.CDense) []float64 {
 	}
 
 	var eig mat.Eigen
-	ok := eig.Factorize(realCov, false)
+	ok := eig.Factorize(realCov, mat.EigenNone)
 	if !ok {
 		return make([]float64, M)
 	}
@@ -243,7 +243,8 @@ func (e *ESPRITEstimator) solveRotationMatrix(Us1, Us2 *mat.CDense, K int) *mat.
 func (e *ESPRITEstimator) extractAngles(psi *mat.CDense, K int) []float64 {
 	angles := make([]float64, K)
 
-	K_actual := min(K, psi.RawMatrix().Rows)
+	rows, _ := psi.Dims()
+	K_actual := min(K, rows)
 
 	for i := 0; i < K_actual; i++ {
 		diagVal := psi.At(i, i)
