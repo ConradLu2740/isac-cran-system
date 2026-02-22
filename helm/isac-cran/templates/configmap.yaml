@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "isac-cran.fullname" . }}-config
+  labels:
+    {{- include "isac-cran.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    server:
+      port: {{ .Values.config.server.port }}
+      mode: {{ .Values.config.server.mode }}
+    log:
+      level: {{ .Values.config.log.level }}
+      format: {{ .Values.config.log.format }}
+      output: stdout
+    mysql:
+      host: {{ .Values.config.mysql.host }}
+      port: {{ .Values.config.mysql.port }}
+      database: {{ .Values.config.mysql.database }}
+      username: {{ .Values.config.mysql.username }}
+      password: {{ .Values.secrets.mysqlPassword }}
+    influxdb:
+      url: {{ .Values.config.influxdb.url }}
+      org: {{ .Values.config.influxdb.org }}
+      bucket: {{ .Values.config.influxdb.bucket }}
+      token: {{ .Values.secrets.influxdbToken }}
+    redis:
+      addr: {{ .Values.config.redis.addr }}

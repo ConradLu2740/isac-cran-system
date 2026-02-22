@@ -1,0 +1,9 @@
+apiVersion: v2
+name: isac-cran-system
+description: ISAC-CRAN System Helm Chart
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+maintainers:
+  - name: ConradLu
+    email: conradlu2740@example.com
