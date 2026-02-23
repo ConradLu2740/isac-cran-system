@@ -176,7 +176,13 @@ func main() {
 
 	engine := router.Setup(irsHandler, channelHandler, algorithmHandler, sensorHandler, systemHandler)
 
-	engine.Use(middleware.RateLimit(100, time.Minute))
+	engine.Use(func(c *gin.Context) {
+		if len(c.Request.URL.Path) >= 7 && c.Request.URL.Path[:7] == "/debug/" {
+			c.Next()
+			return
+		}
+		middleware.RateLimit(100, time.Minute)(c)
+	})
 
 	middleware.RegisterMetrics(engine)
 
