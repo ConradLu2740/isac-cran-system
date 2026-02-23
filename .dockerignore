@@ -1,0 +1,55 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build artifacts
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test files
+*_test.go
+test/
+
+# Temporary files
+*.tmp
+*.log
+*.out
+
+# Node modules (frontend)
+node_modules/
+web/node_modules/
+
+# Data directories
+data/
+*.db
+*.sqlite
+
+# MATLAB files
+matlab/
+
+# Helm charts
+helm/
+
+# Kubernetes configs (not needed in image)
+k8s/
+.github/
+
+# Scripts
+scripts/
+
+# Monitoring configs
+monitoring/
